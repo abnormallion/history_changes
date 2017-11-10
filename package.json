@@ -1,5 +1,5 @@
 {
-  "name": "sms-sender",
+  "name": "history-changes",
   "version": "1.0.0",
   "description": "History of docs changes",
   "main": "server.js",
@@ -17,7 +17,7 @@
     "async": "^2.5.0",
     "body-parser": "^1.18.2",
     "express": "^4.16.2",
-    "fs": "0.0.1-security",
+    "fs": "0.0.1-security",    
     "https": "^1.0.0",
     "moment": "^2.16.0",
     "mongoose": "^4.12.2",

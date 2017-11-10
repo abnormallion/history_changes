@@ -15,10 +15,10 @@ var Strategy = require('passport-http-bearer').Strategy;
 passport.use(new Strategy(
   function(token, cb) {
       if (token === config.token) {
-          // console.log("token ok");
+           console.log("token ok");
           return cb(null, 'OK!');
       }
-      // console.log("token not ok");
+       console.log("token not ok");
       return cb('Incorrect token!');
 }));
 
@@ -49,18 +49,16 @@ var mongoose = require('mongoose');
 
 // MONGODB
 var historySchema = new mongoose.Schema({
-		id: { type: String, index: true },
-		status: Number,
-        user: String,        
-        text: String,
+		id_doc: { type: String, index: true },		
 		//isSent: Boolean,
         //isOK: Boolean,
-        //answer: String,
+        moment: Date,
         createdAt: { type: Date, index: true },
-        //sentAt: Date
+        date: { type: Date, index: true}
 	}, { strict: false });
 
-var HISTORY = mongoose.model('history', historySchema);
+var HISTORY = mongoose.model('reception_histories', historySchema);
+var HISTORY_pharmacy = mongoose.model('pharmacy_reception_histories', historySchema);
 
 mongoose.Promise = global.Promise;
 mongoose.connect(config.MONGO_URL, function(err) {
@@ -96,7 +94,7 @@ mongoose.connection.on("connected", function(ref) {
 // });
 
 // POST method route
-app.post('/history', passport.authenticate('bearer', { session: false }), function (req, res) {
+app.post('/reception_docs', passport.authenticate('bearer', { session: false }), function (req, res) {
 
     // chek DB status
     if (!isDBREADY) {
@@ -108,201 +106,174 @@ app.post('/history', passport.authenticate('bearer', { session: false }), functi
     console.log(data_from1C);
 
     // check 'array' field existence
-    if (data_from1C.array === undefined) {
-        console.log('Can not detect array of changes in the body of POST-request');
-        res.status(400).send('Can not detect array of changes in the body of POST-request');
+    if (data_from1C.id_doc === undefined) {
+        console.log('Can not detect id doc in the body of POST-request');
+        res.status(400).send('Can not detect id doc in the body of POST-request');
     }
 
     // write data in DB
-    async.each(data_from1C.array, function(data, callback) {
+    //async.each(data_from1C.array, function(data, callback) {
 
         console.log('Date ' + new Date());
-        console.log('Processing item: ' + JSON.stringify(data, {indent: true}));
+        console.log('Processing item: ' + JSON.stringify(data_from1C, {indent: true}));
 
-        var new_item = new HISTORY(data);
-        new_item.createdAt = new Date();
-        new_item.isSent = false;
-        new_item.isOK = false;
-        new_item.answer = '';
+        var new_item = new HISTORY(data_from1C);
+        new_item.createdAt = new Date();        
+        new_item.id_doc = data_from1C.id_doc;
+        // new_item.isOK = false;
+        // new_item.answer = '';
+
+        // new_item.save().then((doc) => {
+        //     console.log('All changes processed successfully');
+        //     res.status(200).send(doc);
+        // }, (e) => {
+        //     console.log('Error save changes in database: ' + e);
+        //     res.status(400).send(e);
+        // });
+
+
         new_item.save(function(err) {
             if (err) {
                 console.log('Error save changes in database: ' + err);
-                callback(err);
+                res.status(500).send(err);
+                //callback(err);
             }
             else {
-                console.log('Changes processed');
-                callback();
+                //console.log('Changes processed');
+                console.log('All changes processed successfully');
+                res.status(200).send('OK');
+                //callback();
             }
         }); // end save to MongoDB
 
-    }, function(err) {
-        if( err ) {
-            console.log(err);
-            res.status(500).send(err);
-        } else {
-            console.log('All changes processed successfully');
-            res.status(200).send('OK');
-        }
-    });
+    // }, function(err) {
+    //     if( err ) {
+    //         console.log(err);
+    //         res.status(500).send(err);
+    //     } else {
+    //         console.log('All changes processed successfully');
+    //         res.status(200).send('OK');
+    //     }
+    // });
 });
 
-//GET method route
-// app.get('/getsms', function(req, res) {
-//     res.send('ok');
-//     console.log('Start - ' + Date());
-//     cron.schedule('*/2 * * * *', function(){
-//         console.log('Select SMS - ' + Date());
-//         FindSMS();
-//     });
-// });
+app.post('/pharmacy_reception_docs', passport.authenticate('bearer', { session: false }), function (req, res) {
 
-/*function FindSMS(){
-    // ищем список неотправленных СМСок
-    SMS.find({isSent: false}, function (err, finded_sms, count ){
-        async.eachSeries(finded_sms, function(my_sms, callback) {
-            console.log('sms - ' + my_sms._id); //only debug
-            callback(); //only debug
-            //SendSMS(my_sms, callback);
-        }, function(err) {
-            // if any of the file processing produced an error, err would equal that error
-            if(err) {
-                // One of the iterations produced an error.
-                // All processing will now stop.
-                console.log('Error: ');
-                console.log(err);
-            } else {
-                console.log('All sms processed successfully');
+    // chek DB status
+    if (!isDBREADY) {
+        res.status(400).send('DB is not ready!');
+    }
+
+    var data_from1C = req.body;
+    console.log('data from 1C:');
+    console.log(data_from1C);
+
+    // check 'id_doc' field existence
+    if (data_from1C.id_doc === undefined) {
+        console.log('Can not detect id doc in the body of POST-request');
+        res.status(400).send('Can not detect id doc in the body of POST-request');
+    }
+
+    // write data in DB
+    //async.each(data_from1C.array, function(data, callback) {
+
+        console.log('Date ' + new Date());
+        console.log('Processing item: ' + JSON.stringify(data_from1C, {indent: true}));
+
+        var new_item = new HISTORY_pharmacy(data_from1C);
+        new_item.createdAt = new Date();        
+        new_item.id_doc = data_from1C.id_doc;
+        new_item.date   = new Date(data_from1C.date);
+        new_item.moment = new Date(data_from1C.moment);        
+
+        new_item.save(function(err) {
+            if (err) {
+                console.log('Error save changes in database: ' + err);
+                res.status(500).send(err);
+                //callback(err);
             }
-            //console.log('done!');
-        });
-    });
-}
+            else {
+                //console.log('Changes processed');
+                console.log('All changes processed successfully');
+                res.status(200).send('OK');
+                //callback();
+            }
+        }); // end save to MongoDB
+});
 
-function SendSMS(smska, callback) {
+app.post('/get_pharmacy_reception_docs', passport.authenticate('bearer', { session: false }), function(req, res) {
+    
+    // chek DB status
+    if (!isDBREADY) {
+        res.status(400).send('DB is not ready!');
+    };
 
-    form.text = smska.text;
-    form.destNumber = smska.tel.replace(/[^0-9]/gim, '');
-    var formData2 = querystring.stringify(form);
-    var contentLength2 = formData2.length;
+    var data_from1C = req.body;
+    console.log('data from 1C:');
+    console.log(data_from1C); 
 
-    request({
-        headers: {
-            'Content-Length': contentLength2,
-            'Content-Type': 'application/x-www-form-urlencoded'
-        },
-        url: config.sms_url,
-        body: formData2,
-        method: 'POST'
-    }, function(error, response, body) {
-        if (error) {
-            console.log('Can not perform request to the SMS service: ');
-            callback();
-        } else {
-            ParseAnswer(body, smska, callback);
-        }
-    });
-}
+    // check 'params' field existence
+    if (data_from1C.params === undefined) {
+        console.log('Can not detect parametrs in the body of POST-request');
+        res.status(400).send('Can not detect parameters in the body of POST-request');
+    }; 
 
-function ParseAnswer(answer, smska, callback) {
-    parser.parseString(answer, function (err, result) {
-        if (err) {
-            console.log('Can not parse answer string: ');
-            console.log(err);
-            callback();
-        } else {
-            MessageResult = result['MessageResponse']['Result'];
-            MessageID = result['MessageResponse']['MessageID'];
+    
+     var    commercialObject = data_from1C.params.commercialObject,
+            documentType = data_from1C.params.documentType;    
 
-            isNotError = false;
-            console.log(MessageResult);
-            var errorMessage = '';
-            switch(String(MessageResult)) {
-                  case 'OK':
-                    isNotError = true;
-                    errorMessage = 'Сообщение отправлено';
-                    break;
+    
+    if (data_from1C.params.date_begin === undefined || data_from1C.params.date_end === undefined) {
+        res.status(400).send('Invalid parameters: Date begin or Date end');
+    } else {
+        var dateStart = new Date(data_from1C.params.date_begin),
+            dateEnd = new Date(data_from1C.params.date_end);
 
-                // Неверное имя пользователя или пароль
-                  case 'InvalidCredentials':
-                    errorMessage = 'Неверное имя пользователя или пароль';
-                    break;
+        console.log(dateStart, dateEnd, commercialObject);
+        FindPharmacyDocs(commercialObject, documentType, dateStart, dateEnd, res);
+    };
+});
 
-                // Неверный номер отправителя
-                case 'InvalidSenderAddress':
-                    errorMessage = 'Неверный номер отправителя';
-                    break;
-
-                //Неверный номер получателя
-                case 'InvalidReceiverAddress':
-                    errorMessage = 'Неверный номер получателя';
-                    break;
-
-                //Неверное значение параметра Flash
-                case 'InvalidFlashMessage':
-                    errorMessage = 'Неверное значение параметра Flash';
-                    break;
-
-                //Сообщение заблокировано
-                case 'MessageBlocked':
-                    errorMessage = 'Сообщение заблокировано';
-                    break;
-
-                //Недостаточно средств на лицевом счете
-                case 'InvalidBalance':
-                    errorMessage = 'Недостаточно средств на лицевом счете';
-                    break;
-
-                //Аккаунт отключен
-                case 'UserDisabled':
-                    errorMessage = 'Аккаунт отключен';
-                    break;
-
-                //Ошибка хранилища данных.
-                case 'DatabaseOffline':
-                    errorMessage = 'Ошибка БД. Попробуйте повторить запрос позже';
-                    break;
-
-                //Незнакомая ошибка
-                case 'UnKnown':
-                    errorMessage = 'Незнакомая ошибка. Свяжитесь со службой поддержки';
-                    break;
-
-                //Ошибка сервиса
-                case 'Error':
-                    errorMessage = 'Внутренняя ошибка сервиса. Свяжитесь со службой поддержки';
-                    break;
-
-               //Неизвестный нам ответ
-                default:
-                    errorMessage = 'Неверный ответ от сервера';
-                    break;
-                }
-
-                console.log('SMS MessageID = ' + MessageID + ' - ' + errorMessage);
-
-                //change 'Status' to True
-                smska.isSent = true;
-                smska.isOK = isNotError;
-                smska.answer = errorMessage;
-                smska.sentAt = new Date();
-                smska.save(function (err) {
-                    if (err) {
-                        console.log('Can not update SMSinfo in the DB');
-                        console.log(err);
-                        callback();
-                    } else {
-                        console.log('Sms processed successfully');
-                        callback();
-                    }
-                });
-        }
-    });
-}
-*/
-// app.listen(config.port, function () {
-//   console.log('App listening on port: '+config.port);
-// });
 
 https.createServer(httpsOptions, app).listen(config.port, function() {
     console.log('Server listening on port %d in %s mode', config.port, process.env.NODE_ENV);
 });
+
+function FindPharmacyDocs(commercialObject, documentType, startDate, endDate, res){
+    
+    if (commercialObject === 'pharmacy' && documentType === 'reception')  {  
+    
+        res.writeHead(200, {'Content-Type': 'application/json'});
+        res.write('');
+    //получаем записи в базе данных за указанный период - сворачиваем по уникальному идентификатору документа (т.к. есть несколько версий объекта)
+        HISTORY_pharmacy.find({date: {$gte: startDate, $lt:endDate}}).distinct('id_doc').exec(function (err, finded_ides){ 
+            var firstItem = true;            
+            async.eachSeries(finded_ides, function(id_doc, callback) {
+                console.log('doc - ' + id_doc); //only debug
+            //из множества версий каждого документа - выбираем последний по дате
+                HISTORY_pharmacy.findOne({id_doc: id_doc}).sort({moment: 'desc'}).exec(function (err, finded_docs){
+                    // async.eachSeries(finded_docs, function(doc, callback) {
+                        console.log('doc - ' + finded_docs.id_doc, finded_docs.moment); //only debug
+                        res.write(firstItem ? (firstItem=false,'[') : ',');
+                        res.write(JSON.stringify({ item_doc: finded_docs }));
+                        callback();
+                    // });                    
+                });                
+            }, function(err) {
+                // if any of the file processing produced an error, err would equal that error
+                if(err) {
+                    // One of the iterations produced an error.
+                    // All processing will now stop.
+                    console.log('Error: ');
+                    console.log(err);
+                    res.status(400).send('Error in processing');
+                } else {
+                    console.log('All docs processed successfully');
+                    res.end(']');
+                }                
+            });
+        });
+    } else {
+        res.status(400).send('Unknown parameters');
+    }
+}
